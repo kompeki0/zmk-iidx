@@ -1,0 +1,26 @@
+menuconfig ZMK_IIDX_HID
+    bool "IIDX-compatible dedicated USB HID"
+    depends on !ZMK_USB
+    select USB
+    select USB_DEVICE_STACK
+    select USB_DEVICE_HID
+    help
+      Register a single, report-ID-less USB HID joystick interface whose
+      input report consists of two absolute axes, sixteen button bits, and
+      one constant padding byte.
+
+if ZMK_IIDX_HID
+
+config ZMK_IIDX_HID_INIT_PRIORITY
+    int "IIDX HID initialization priority"
+    default 95
+    help
+      The HID interface must be registered before ZMK enables USB. Keep this
+      value lower than CONFIG_ZMK_USB_INIT_PRIORITY (96 by default).
+
+config ZMK_IIDX_HID_SEND_TIMEOUT_MS
+    int "IIDX HID endpoint timeout in milliseconds"
+    range 1 1000
+    default 30
+
+endif
