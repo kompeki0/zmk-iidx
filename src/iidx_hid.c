@@ -16,6 +16,7 @@
 
 #include <zmk/usb.h>
 #include <zmk_iidx/hid.h>
+#include <zmk_iidx/mode.h>
 
 LOG_MODULE_REGISTER(zmk_iidx_hid, CONFIG_ZMK_LOG_LEVEL);
 
@@ -58,6 +59,8 @@ static const uint8_t iidx_report_descriptor[] = {
 
 BUILD_ASSERT(sizeof(iidx_report_descriptor) == 50, "IIDX report descriptor must be 50 bytes");
 BUILD_ASSERT(sizeof(struct zmk_iidx_hid_report) == 5, "IIDX input report must be 5 bytes");
+BUILD_ASSERT(CONFIG_USB_HID_DEVICE_COUNT == 2,
+             "Composite keyboard/IIDX mode requires exactly two HID devices");
 
 static const struct device *hid_dev;
 static struct zmk_iidx_hid_report current_report;
@@ -139,7 +142,19 @@ int zmk_iidx_hid_send(void) {
     return err;
 }
 
+int zmk_iidx_hid_clear(void) {
+    k_mutex_lock(&report_mutex, K_FOREVER);
+    memset(&current_report, 0, sizeof(current_report));
+    k_mutex_unlock(&report_mutex);
+
+    return zmk_iidx_hid_send();
+}
+
 int zmk_iidx_hid_set_button(uint8_t bit, bool pressed) {
+    if (!zmk_iidx_mode_is_active()) {
+        return -EACCES;
+    }
+
     if (!valid_button_bit(bit)) {
         return -EINVAL;
     }
@@ -157,6 +172,10 @@ int zmk_iidx_hid_set_button(uint8_t bit, bool pressed) {
 }
 
 int zmk_iidx_hid_set_axis(enum zmk_iidx_axis axis, int16_t value) {
+    if (!zmk_iidx_mode_is_active()) {
+        return -EACCES;
+    }
+
     k_mutex_lock(&report_mutex, K_FOREVER);
     switch (axis) {
     case ZMK_IIDX_AXIS_X:
@@ -175,6 +194,10 @@ int zmk_iidx_hid_set_axis(enum zmk_iidx_axis axis, int16_t value) {
 }
 
 int zmk_iidx_hid_adjust_axis(enum zmk_iidx_axis axis, int16_t delta) {
+    if (!zmk_iidx_mode_is_active()) {
+        return -EACCES;
+    }
+
     k_mutex_lock(&report_mutex, K_FOREVER);
     switch (axis) {
     case ZMK_IIDX_AXIS_X:
@@ -193,6 +216,10 @@ int zmk_iidx_hid_adjust_axis(enum zmk_iidx_axis axis, int16_t delta) {
 }
 
 int zmk_iidx_hid_set_axes(int16_t x, int16_t y) {
+    if (!zmk_iidx_mode_is_active()) {
+        return -EACCES;
+    }
+
     k_mutex_lock(&report_mutex, K_FOREVER);
     current_report.x = clamp_axis(x);
     current_report.y = clamp_axis(y);
@@ -202,16 +229,16 @@ int zmk_iidx_hid_set_axes(int16_t x, int16_t y) {
 }
 
 static int zmk_iidx_hid_init(void) {
-    hid_dev = device_get_binding("HID_0");
+    hid_dev = device_get_binding("HID_1");
     if (hid_dev == NULL) {
-        LOG_ERR("Unable to locate HID_0");
+        LOG_ERR("Unable to locate HID_1; set CONFIG_USB_HID_DEVICE_COUNT=2");
         return -ENODEV;
     }
 
     usb_hid_register_device(hid_dev, iidx_report_descriptor, sizeof(iidx_report_descriptor),
                             &hid_ops);
     usb_hid_init(hid_dev);
-    LOG_INF("Registered 5-byte IIDX HID report on HID_0");
+    LOG_INF("Registered 5-byte IIDX HID report on HID_1");
     return 0;
 }
 

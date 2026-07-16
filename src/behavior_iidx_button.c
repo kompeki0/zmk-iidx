@@ -13,10 +13,15 @@
 #include <drivers/behavior.h>
 #include <zmk/behavior.h>
 #include <zmk_iidx/hid.h>
+#include <zmk_iidx/mode.h>
 
 LOG_MODULE_DECLARE(zmk_iidx_hid, CONFIG_ZMK_LOG_LEVEL);
 
 static int update_button(struct zmk_behavior_binding *binding, bool pressed) {
+    if (!zmk_iidx_mode_is_active()) {
+        return ZMK_BEHAVIOR_OPAQUE;
+    }
+
     if (binding->param1 > UINT8_MAX) {
         LOG_WRN("Invalid IIDX button bit %u", binding->param1);
         return ZMK_BEHAVIOR_OPAQUE;

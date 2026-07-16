@@ -42,6 +42,9 @@ int zmk_iidx_hid_set_axes(int16_t x, int16_t y);
 /** Send the current five-byte report without changing it. */
 int zmk_iidx_hid_send(void);
 
+/** Reset axes and buttons to zero, then send the neutral report. */
+int zmk_iidx_hid_clear(void);
+
 #ifdef __cplusplus
 }
 #endif
