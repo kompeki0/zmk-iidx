@@ -61,6 +61,72 @@ CONFIG_ZMK_USB_LOGGING=n
 VID/PIDはcomposite USB device全体に適用されます。IIDX interfaceは2番目のHIDに
 なるため、Configuration Descriptorとendpoint addressは1-interfaceの参照機器とは異なります。
 
+## IIDX vendor BLE
+
+BLEを使用する場合は `.conf` に次を追加します。
+
+```conf
+CONFIG_ZMK_BLE=y
+CONFIG_ZMK_IIDX_BLE=y
+
+CONFIG_BT_DEVICE_NAME="IIDX Entry model"
+CONFIG_BT_DEVICE_NAME_MAX=16
+
+# Preferred Peripheral Connection Parameters
+# 6 * 1.25 ms = 7.5 ms
+CONFIG_BT_PERIPHERAL_PREF_MIN_INT=6
+CONFIG_BT_PERIPHERAL_PREF_MAX_INT=6
+CONFIG_BT_PERIPHERAL_PREF_LATENCY=0
+CONFIG_BT_PERIPHERAL_PREF_TIMEOUT=400
+```
+
+このモジュールは次のvendor-specific GATT serviceを追加します。ZMK標準の
+HID over GATT serviceも併存します。
+
+```text
+Primary Service:       UUID 0xFF00
+Notify Characteristic: UUID 0xFF01
+```
+
+IIDX mode中にclientがCCCでnotifyを有効化すると、約16.667msごとに5バイトを
+2回送信します。合計は約60 frame/秒、約120 notify/秒です。
+
+```text
+byte 0: scratch = USB reportのX軸値
+byte 1: 0x00
+byte 2 bit 0..6: B1..B7
+byte 3 bit 0..1: E1..E2
+byte 4: sequence counter
+```
+
+1 frame目のsequenceは1と2、2 frame目は3と4となり、それぞれ2ずつ増加します。
+E3/E4とY軸はBLE packetでは使用しません。
+
+frame intervalと接続時に要求するconnection intervalは次で上書きできます。
+
+```conf
+CONFIG_ZMK_IIDX_BLE_FRAME_INTERVAL_US=16667
+CONFIG_ZMK_IIDX_BLE_CONN_INTERVAL=6
+CONFIG_ZMK_IIDX_BLE_CONN_TIMEOUT=400
+```
+
+connection intervalはperipheral側から要求しますが、最終的な値はAndroid等のcentral側が
+決定します。
+
+### USB優先
+
+USB HIDが利用可能になると次の動作になります。
+
+1. IIDX vendor BLE notifyを停止
+2. ZMK標準keyboardのpreferred transportをUSBに変更
+3. USBを抜くと、ZMKのfallbackでBLE keyboardへ戻る
+4. IIDX modeかつCCC購読が残っていればvendor notifyも再開
+
+BLE接続自体はUSB接続中も維持されますが、IIDX vendor packetは送信しません。
+
+現時点でadvertising packetへ `0xFF00` は追加しません。clientは名前等で接続した後、
+GATT Service Discoveryで `0xFF00` / `0xFF01` を検出する前提です。
+
 ## behaviorとkeymap
 
 keymapのルートに、button、mode、boot-selectのbehavior nodeを定義します。

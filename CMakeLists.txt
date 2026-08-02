@@ -6,4 +6,5 @@ if(CONFIG_ZMK_IIDX_HID)
     src/behavior_iidx_button.c
     src/behavior_iidx_mode.c
   )
+  target_sources_ifdef(CONFIG_ZMK_IIDX_BLE app PRIVATE src/iidx_ble.c)
 endif()

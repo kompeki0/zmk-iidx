@@ -17,6 +17,9 @@
 #include <zmk/hid.h>
 #include <zmk/keymap.h>
 #include <zmk/usb_hid.h>
+#if IS_ENABLED(CONFIG_ZMK_IIDX_BLE)
+#include <zmk_iidx/ble.h>
+#endif
 #include <zmk_iidx/hid.h>
 #include <zmk_iidx/mode.h>
 
@@ -66,6 +69,9 @@ static int on_pressed(struct zmk_behavior_binding *binding,
     clear_standard_usb_reports();
 
     atomic_set(&iidx_mode_active, enable_iidx);
+#if IS_ENABLED(CONFIG_ZMK_IIDX_BLE)
+    zmk_iidx_ble_mode_changed(enable_iidx);
+#endif
     zmk_keymap_layer_id_t layer =
         enable_iidx ? config->iidx_layer : config->keyboard_layer;
 

@@ -1,7 +1,5 @@
 name: zmk-iidx
 build:
-  depends:
-    - zmk
   cmake: .
   kconfig: Kconfig
   settings:
